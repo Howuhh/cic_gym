@@ -42,7 +42,7 @@ class CICTrainer:
 
         return np.array(returns), np.array(lens)
 
-    def train(self, agent, exploration, timesteps, start_train, batch_size, buffer_size, update_skill_every, eval_every, seed=42):
+    def train(self, agent, exploration, timesteps, start_train, batch_size, buffer_size, update_skill_every, update_every, eval_every, seed=42):
         run_name = os.path.join(self.checkpoints_path, str(uuid.uuid4()))
         os.makedirs(run_name, exist_ok=True)
         print(f"Run checkpoints path: {run_name}")
@@ -80,19 +80,20 @@ class CICTrainer:
 
             exploration.step()
             if step > start_train:
-                batch = buffer.sample(size=batch_size)
-                update_info = agent.update(batch)
+                if step % update_every:
+                    batch = buffer.sample(size=batch_size)
+                    update_info = agent.update(batch)
 
-                total_loss += update_info["loss"]
-                total_updates += 1
+                    total_loss += update_info["loss"]
+                    total_updates += 1
 
-                if step % self.log_every == 0:
-                    wandb.log({
-                        "step": step,
-                        "reward_mean": total_reward / step,
-                        **update_info,
-                        **exp_info
-                    })
+                    if step % self.log_every == 0:
+                        wandb.log({
+                            "step": step,
+                            "reward_mean": total_reward / step,
+                            **update_info,
+                            **exp_info
+                        })
 
                 if step % eval_every == 0:
                     if self.eval_env is not None:

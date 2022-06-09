@@ -68,6 +68,11 @@ class RMS:
         return self.M, self.S
 
 
+def pairwise_dist(X: Tensor, Y: Tensor):
+    dists = torch.sum(X**2, dim=1, keepdims=True) + torch.sum(Y ** 2, dim=1) - 2 * X @ Y.T
+    return torch.sqrt(dists)
+
+
 def compute_apt_reward(
         source: Tensor,
         target: Tensor,
@@ -79,7 +84,12 @@ def compute_apt_reward(
 ) -> Tensor:
     b1, b2 = source.size(0), target.size(0)
     # (b1, 1, c) - (1, b2, c) -> (b1, 1, c) - (1, b2, c) -> (b1, b2, c) -> (b1, b2)
+
+    # what the hell is this line of code? I will eat up all memory and 200x slower
+
     sim_matrix = torch.norm(source[:, None, :].view(b1, 1, -1) - target[None, :, :].view(1, b2, -1), dim=-1, p=2)
+
+    sim_matrix = pairwise_dist(source, target)
     reward, _ = sim_matrix.topk(knn_k, dim=1, largest=False, sorted=True)  # (b1, k)
 
     if not knn_avg:  # only keep k-th nearest neighbor
@@ -184,3 +194,16 @@ def rollout(env, agent, skill, render_path=None):
         imageio.mimsave(render_path, images, fps=32)
 
     return total_reward, steps
+
+
+if __name__ == "__main__":
+    torch.manual_seed(32)
+
+    source = torch.randn(1024, 10)
+    target = torch.randn(1024, 10)
+
+    b1, b2 = source.size(0), target.size(0)
+    sim_matrix = torch.norm(source[:, None, :].view(b1, 1, -1) - target[None, :, :].view(1, b2, -1), dim=-1, p=2)
+    sim_matrix_fast = pairwise_dist(source, target)
+
+    print((sim_matrix.topk(4, dim=1, largest=False, sorted=True)[1] - sim_matrix_fast.topk(4, dim=1, largest=False, sorted=True)[1]).sum())

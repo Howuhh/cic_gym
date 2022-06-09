@@ -75,6 +75,7 @@ class CICAgent:
     def eval(self):
         self.train(training=False)
 
+    @torch.no_grad()
     def _compute_apt_reward(self, obs, next_obs):
         source = self.cic.state_net(obs)
         target = self.cic.state_net(next_obs)
