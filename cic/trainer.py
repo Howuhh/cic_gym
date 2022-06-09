@@ -1,9 +1,8 @@
 import os
 import gym
 import uuid
+import wandb
 import torch
-import torch.nn as nn
-
 import numpy as np
 
 from typing import Optional
@@ -51,7 +50,7 @@ class CICTrainer:
         set_seed(env=self.train_env, seed=seed)
 
         total_loss, total_updates, total_reward = 0, 0, 0
-        buffer = ReplayBuffer(agent.obs_dim, agent.action_dim, agent.skill_dim, buffer_size)
+        buffer = ReplayBuffer(agent.obs_dim, agent.action_dim, agent.skill_dim, buffer_size, device=agent.device)
 
         # select inital skill
         skill = agent.get_new_skill()
@@ -87,19 +86,26 @@ class CICTrainer:
                 total_loss += update_info["loss"]
                 total_updates += 1
 
-                # if step % self.log_every == 0:
-                    # wandb.log({"step": step, "reward_mean": total_reward / step, **update_info, **exp_info})
-
-                    # log info if needed
-                    # info_ = {f"info/{k}": float(v) for k, v in info.items()}
-                    # wandb.log({"step": step, "info/done": int(done), **info_})
+                if step % self.log_every == 0:
+                    wandb.log({
+                        "step": step,
+                        "reward_mean": total_reward / step,
+                        **update_info,
+                        **exp_info
+                    })
 
                 if step % eval_every == 0:
                     if self.eval_env is not None:
                         agent.eval()
                         returns, lens = self.evaluate(agent, skill, num_episodes=25, seed=self.eval_seed)
-                        # wandb.log({"step": step, "eval/reward_mean": np.mean(returns), "eval/reward_std": np.std(returns), "eval/mean_average_reward": np.mean(returns / lens)})
                         agent.train()
+
+                        wandb.log({
+                            "step": step,
+                            "eval/reward_mean": np.mean(returns),
+                            "eval/reward_std": np.std(returns),
+                            "eval/mean_average_reward": np.mean(returns / lens)
+                        })
 
                     torch.save(agent, os.path.join(run_name, f"agent_{step}.pt"))
                     tqdm.write(f"Step: {step}, Loss: {total_loss / total_updates}, Intristic Reward: {update_info['int_reward_batch_mean']}"

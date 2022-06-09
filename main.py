@@ -1,5 +1,6 @@
 import gym
 import torch
+import wandb
 
 from cic.agent import CICAgent
 from cic.trainer import CICTrainer
@@ -8,19 +9,26 @@ from cic.utils import set_seed, NormalNoise, rollout
 
 def main():
     set_seed(seed=32)
-
+    wandb.init(
+        project="CIC",
+        group="cheetah",
+        name="first_run",
+        entity="Howuhh"
+    )
     agent = CICAgent(
         obs_dim=17,
         action_dim=6,
         skill_dim=64,
         hidden_dim=256,
+        learning_rate=1e-4,
+        target_tau=1e-4,
     )
     exploration = NormalNoise(
         action_dim=6,
-        timesteps=1_000_000,
+        timesteps=3_000_000,
         max_action=1.0,
         eps_max=0.5,
-        eps_min=0.0
+        eps_min=0.05
     )
     trainer = CICTrainer(
         train_env="HalfCheetah-v3",
@@ -29,11 +37,11 @@ def main():
     trainer.train(
         agent=agent,
         exploration=exploration,
-        timesteps=1_000_000,
-        start_train=5000,
+        timesteps=3_000_000,
+        start_train=4000,
         batch_size=1024,
-        buffer_size=50_000,
-        update_skill_every=50,
+        buffer_size=1_000_000,
+        update_skill_every=100,
         eval_every=5000
     )
 

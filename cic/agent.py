@@ -141,7 +141,7 @@ class CICAgent:
         self.cic_opt.step()
 
         # compute intristic reward
-        int_reward = self._compute_apt_reward(obs, next_obs)
+        int_reward = self._compute_apt_reward(next_obs, next_obs)
 
         # augment state with skill
         obs = torch.cat([obs, skill], dim=-1)
