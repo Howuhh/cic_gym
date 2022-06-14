@@ -85,10 +85,10 @@ def compute_apt_reward(
     b1, b2 = source.size(0), target.size(0)
     # (b1, 1, c) - (1, b2, c) -> (b1, 1, c) - (1, b2, c) -> (b1, b2, c) -> (b1, b2)
 
-    # what the hell is this line of code? It will eat up all memory and 15x slower (from original code)
+    # It will eat up all memory and 15x slower (from original code)
     # sim_matrix = torch.norm(source[:, None, :].view(b1, 1, -1) - target[None, :, :].view(1, b2, -1), dim=-1, p=2)
 
-    # corrected version (identical to the original, but faster)
+    # corrected version (identical to the original, but a lot faster)
     sim_matrix = pairwise_dist(source, target)
     reward, _ = sim_matrix.topk(knn_k, dim=1, largest=False, sorted=True)  # (b1, k)
 

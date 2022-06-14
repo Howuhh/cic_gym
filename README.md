@@ -8,7 +8,7 @@ So I carefully rewrote the parts I needed (unsupervised pretraining) to work wit
 - only code for CIC pretraining is implemented, as I don't need finetuning in my research project
 - no documentation, as this is just quick idea mockup for me
 
-Other than that, code is working and even have some time/memory performance improvements in [some](cic/utils.py:92) places. 
+Other than that, code is working and even have some time/memory performance improvements in some places (`compute_apt_reward` computation to be specific). 
 
 # References
 ```
