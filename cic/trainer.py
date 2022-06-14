@@ -59,7 +59,7 @@ class CICTrainer:
         for step in trange(1, timesteps + 1, desc="Training", leave=True):
             if done:
                 done, state = False, self.train_env.reset()
-                skill = agent.get_new_skill()
+                # skill = agent.get_new_skill()
             elif step % update_skill_every == 0:
                 skill = agent.get_new_skill()
 

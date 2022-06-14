@@ -52,9 +52,9 @@ class CICAgent:
         with torch.no_grad():
             self.actor_target = deepcopy(self.actor)
             self.critic_target = deepcopy(self.critic)
+            self.reward_rms = RMS(epsilon=1e-4, shape=(1,), device=self.device)
 
         self.cic = CIC(obs_dim, skill_dim, hidden_dim, project_skill).to(device)
-        self.reward_rms = RMS(epsilon=1e-4, shape=(1,), device=self.device)
 
         # optimizers
         self.actor_opt = Adam(self.actor.parameters(), lr=learning_rate)
@@ -124,7 +124,7 @@ class CICAgent:
         sim = torch.exp(cov / self.temperature)
         neg = sim.sum(dim=-1)
 
-        row_sub = torch.Tensor(neg.shape).fill_(math.e**(1 / self.temperature)).to(neg.device)
+        row_sub = torch.zeros_like(neg).fill_(math.e**(1 / self.temperature))
         neg = torch.clamp(neg - row_sub, min=1e-6)  # clamp for numerical stability
         pos = torch.exp(torch.sum(query * key, dim=-1) / self.temperature)
         loss = -torch.log(pos / (neg + 1e-6)).mean()
@@ -132,7 +132,7 @@ class CICAgent:
         return loss
 
     def update(self, batch):
-        obs, action, ext_reward, next_obs, done, skill = batch
+        obs, action, ext_reward, next_obs, done, skill = [b.to(self.device) for b in batch]
 
         # update CIC
         cic_loss = self._cic_loss(obs, next_obs, skill)
@@ -143,6 +143,8 @@ class CICAgent:
 
         # compute intristic reward
         int_reward = self._compute_apt_reward(next_obs, next_obs)
+        # or that? In paper this it the formula, but in code they use the next_obs instead of obs
+        # int_reward = self._compute_apt_reward(obs, next_obs)
 
         # augment state with skill
         obs = torch.cat([obs, skill], dim=-1)

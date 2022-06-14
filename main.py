@@ -1,11 +1,13 @@
 import gym
 import torch
 import wandb
+import numpy as np
 
 from cic.agent import CICAgent
 from cic.trainer import CICTrainer
 from cic.utils import set_seed, NormalNoise, rollout
 
+DEVICE = "cuda"
 
 def main():
     set_seed(seed=32)
@@ -13,41 +15,52 @@ def main():
         project="CIC",
         group="cheetah",
         name="first_run",
-        entity="Howuhh"
+        entity="Howuhh",
+        mode="disabled"
     )
     agent = CICAgent(
         obs_dim=17,
         action_dim=6,
-        skill_dim=64,
-        hidden_dim=256,
+        skill_dim=64, # 64
+        hidden_dim=256,  # 256
         learning_rate=1e-4,
-        target_tau=1e-4,
+        target_tau=1e-4, # 1e-4
+        update_actor_every=1,
+        device=DEVICE
     )
     exploration = NormalNoise(
         action_dim=6,
-        timesteps=3_000_000,
+        timesteps=2_000_000,
         max_action=1.0,
-        eps_max=0.5,
+        eps_max=0.6, # 0.6
         eps_min=0.05
     )
     trainer = CICTrainer(
         train_env="HalfCheetah-v3",
+        eval_env="HalfCheetah-v3",
         checkpoints_path="cic_checkpoints"
     )
     trainer.train(
         agent=agent,
         exploration=exploration,
-        timesteps=3_000_000,
-        start_train=4000,
-        batch_size=1024,
+        timesteps=2_000_000,
+        start_train=4000, # 4000
+        batch_size=2048, # 1024
         buffer_size=1_000_000,
-        update_skill_every=100,
-        eval_every=5000
+        update_skill_every=100, # 100
+        update_every=2, # 1
+        eval_every=25_000
     )
 
-    # agent = torch.load("cic_checkpoints/c31abd08-b9e2-48b3-8e41-e77b96f29fe5/agent_40000.pt")
-    # skill = agent.get_new_skill()
-    # rollout(gym.make("HalfCheetah-v3"), agent, skill, render_path="rollout.mp4")
+    # agent = torch.load("cic_checkpoints/45695034-daec-440f-b4cf-d505ffd1b251/agent_250000.pt")
+    # skills = np.linspace(0.0, 1.0, 10)
+    #
+    # for i, skill_value in enumerate(skills):
+    #     env = gym.make("HalfCheetah-v3")
+    #     set_seed(env=env, seed=32)
+    #     skill = np.zeros(agent.skill_dim) + skill_value
+
+        # rollout(env, agent, skill, render_path=f"videos/rollout_{i}.mp4", max_steps=100)
 
 
 if __name__ == "__main__":

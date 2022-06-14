@@ -51,8 +51,8 @@ def weight_init(m: Module):
 # from https://github.com/rll-research/cic/blob/b523c3884256346cb585bf06e52a7aadc127dcfc/agent/cic.py#L56
 class RMS:
     def __init__(self, epsilon=1e-4, shape=(1,), device="cpu"):
-        self.M = torch.zeros(shape).to(device)
-        self.S = torch.ones(shape).to(device)
+        self.M = torch.zeros(shape, requires_grad=False).to(device)
+        self.S = torch.ones(shape, requires_grad=False).to(device)
         self.n = epsilon
 
     def __call__(self, x: Tensor) -> Tuple[Tensor, Tensor]:
@@ -85,9 +85,10 @@ def compute_apt_reward(
     b1, b2 = source.size(0), target.size(0)
     # (b1, 1, c) - (1, b2, c) -> (b1, 1, c) - (1, b2, c) -> (b1, b2, c) -> (b1, b2)
 
-    # what the hell is this line of code? I will eat up all memory and 200x slower
+    # what the hell is this line of code? It will eat up all memory and 15x slower (from original code)
     # sim_matrix = torch.norm(source[:, None, :].view(b1, 1, -1) - target[None, :, :].view(1, b2, -1), dim=-1, p=2)
 
+    # corrected version (identical to the original, but faster)
     sim_matrix = pairwise_dist(source, target)
     reward, _ = sim_matrix.topk(knn_k, dim=1, largest=False, sorted=True)  # (b1, k)
 
@@ -176,7 +177,7 @@ class NormalNoise:
         self._step = self._step + 1
 
 
-def rollout(env, agent, skill, render_path=None):
+def rollout(env, agent, skill, render_path=None, max_steps=float("inf")):
     done, state = False, env.reset()
 
     steps, total_reward, images = 0.0, 0.0, []
@@ -188,6 +189,9 @@ def rollout(env, agent, skill, render_path=None):
 
         if render_path is not None:
             images.append(env.render(mode="rgb_array"))
+
+        if steps > max_steps:
+            done = True
 
     if render_path is not None:
         imageio.mimsave(render_path, images, fps=32)
